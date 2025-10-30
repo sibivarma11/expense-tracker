@@ -11,6 +11,7 @@ interface AddExpenseModalProps {
   setCategory: (value: string) => void;
   description: string;
   setDescription: (value: string) => void;
+  isDark: boolean;
 }
 
 export default function AddExpenseModal({
@@ -23,6 +24,7 @@ export default function AddExpenseModal({
   setCategory,
   description,
   setDescription,
+  isDark,
 }: AddExpenseModalProps) {
   return (
     <Modal
@@ -32,27 +34,30 @@ export default function AddExpenseModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.popup}>
-          <Text style={styles.popupTitle}>Add New Expense</Text>
+        <View style={[styles.popup, isDark && styles.popupDark]}>
+          <Text style={[styles.popupTitle, isDark && styles.popupTitleDark]}>Add New Expense</Text>
           
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && styles.inputDark]}
             placeholder="Amount"
+            placeholderTextColor={isDark ? "#666" : "#999"}
             keyboardType="numeric"
             value={amount}
             onChangeText={setAmount}
           />
           
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && styles.inputDark]}
             placeholder="Category (e.g., Food, Transport, Shopping, Bills)"
+            placeholderTextColor={isDark ? "#666" : "#999"}
             value={category}
             onChangeText={setCategory}
           />
           
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && styles.inputDark]}
             placeholder="Description (optional)"
+            placeholderTextColor={isDark ? "#666" : "#999"}
             value={description}
             onChangeText={setDescription}
           />
@@ -60,9 +65,9 @@ export default function AddExpenseModal({
           <View style={styles.buttonRow}>
             <TouchableOpacity
               onPress={onClose}
-              style={[styles.modalButton, styles.cancelButton]}
+              style={[styles.modalButton, styles.cancelButton, isDark && styles.cancelButtonDark]}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -96,12 +101,18 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
   },
+  popupDark: {
+    backgroundColor: "#1c1c1e",
+  },
   popupTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
     marginBottom: 20,
     textAlign: "center",
+  },
+  popupTitleDark: {
+    color: "#fff",
   },
   input: {
     borderWidth: 1,
@@ -110,6 +121,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     fontSize: 16,
+    color: "#000",
+  },
+  inputDark: {
+    borderColor: "#444",
+    backgroundColor: "#2c2c2e",
+    color: "#fff",
   },
   buttonRow: {
     flexDirection: "row",
@@ -125,11 +142,17 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "#f0f0f0",
   },
+  cancelButtonDark: {
+    backgroundColor: "#2c2c2e",
+  },
   cancelButtonText: {
     textAlign: "center",
     fontSize: 16,
     fontWeight: "600",
     color: "#666",
+  },
+  cancelButtonTextDark: {
+    color: "#fff",
   },
   saveButton: {
     backgroundColor: "#1e7cf8",

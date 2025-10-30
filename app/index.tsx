@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, Switch, ScrollView, useColorScheme, Animated, Dimensions } from "react-native";
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as SQLite from 'expo-sqlite';
 import AddExpenseModal from '../components/AddExpenseModal';
 
@@ -11,14 +14,22 @@ interface Expense {
   date: string;
 }
 
+const { width } = Dimensions.get('window');
+const DRAWER_WIDTH = width * 0.75;
+
 export default function Index() {
+  const colorScheme = useColorScheme();
+  const [manualTheme, setManualTheme] = useState<'light' | 'dark' | null>(null);
+  const isDark = manualTheme ? manualTheme === 'dark' : colorScheme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const gestureTranslateX = useRef(new Animated.Value(0)).current;
 
   // Initialize SQLite database
   useEffect(() => {
@@ -56,7 +67,7 @@ export default function Index() {
       amount: parseFloat(amount),
       category: category.trim(),
       description: description.trim(),
-      date: new Date().toISOString(),
+      date: selectedDate.toISOString(),
     };
 
     const db = await SQLite.openDatabaseAsync('expenses.db');
@@ -78,37 +89,17 @@ export default function Index() {
     setExpenses(expenses.filter(exp => exp.id !== id));
   };
 
-  // Filter expenses by selected month and year
+  // Filter expenses by selected date (same day)
   const getFilteredExpenses = () => {
     return expenses.filter(exp => {
       const expDate = new Date(exp.date);
-      return expDate.getMonth() === selectedMonth && expDate.getFullYear() === selectedYear;
+      return expDate.getDate() === selectedDate.getDate() &&
+             expDate.getMonth() === selectedDate.getMonth() &&
+             expDate.getFullYear() === selectedDate.getFullYear();
     });
   };
 
-  // Group expenses by day
-  const getExpensesByDay = () => {
-    const filtered = getFilteredExpenses();
-    const grouped: { [key: string]: Expense[] } = {};
-    
-    filtered.forEach(exp => {
-      const date = new Date(exp.date);
-      const dayKey = date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-      
-      if (!grouped[dayKey]) {
-        grouped[dayKey] = [];
-      }
-      grouped[dayKey].push(exp);
-    });
-    
-    return grouped;
-  };
-
-  // Calculate totals for selected month
+  // Calculate totals for selected day
   const getTotalExpense = () => {
     return getFilteredExpenses().reduce((sum, exp) => sum + exp.amount, 0);
   };
@@ -128,81 +119,205 @@ export default function Index() {
     return breakdown;
   };
 
-  const expensesByDay = getExpensesByDay();
+  const filteredExpenses = getFilteredExpenses();
   const totalExpense = getTotalExpense();
   const categoryBreakdown = getCategoryBreakdown();
 
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
 
-  const changeMonth = (direction: number) => {
-    let newMonth = selectedMonth + direction;
-    let newYear = selectedYear;
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const isToday = () => {
+    const now = new Date();
+    return selectedDate.getDate() === now.getDate() &&
+           selectedDate.getMonth() === now.getMonth() &&
+           selectedDate.getFullYear() === now.getFullYear();
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const openDrawer = () => {
+    setDrawerOpen(true);
+    Animated.timing(translateX, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    Animated.timing(translateX, {
+      toValue: -DRAWER_WIDTH,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: gestureTranslateX } }],
+    { useNativeDriver: true }
+  );
+
+  const onHandlerStateChange = (event: any) => {
+    const { state, translationX, velocityX } = event.nativeEvent;
     
-    if (newMonth > 11) {
-      newMonth = 0;
-      newYear++;
-    } else if (newMonth < 0) {
-      newMonth = 11;
-      newYear--;
+    if (state === State.BEGAN) {
+      translateX.stopAnimation();
     }
     
-    setSelectedMonth(newMonth);
-    setSelectedYear(newYear);
+    if (state === State.END || state === State.CANCELLED) {
+      const currentPosition = drawerOpen ? 0 : -DRAWER_WIDTH;
+      const finalPosition = currentPosition + translationX;
+      
+      gestureTranslateX.setValue(0);
+      translateX.setValue(finalPosition);
+      
+      if (finalPosition > -DRAWER_WIDTH / 2 || velocityX > 500) {
+        openDrawer();
+      } else {
+        closeDrawer();
+      }
+    }
+  };
+
+  const animatedTranslateX = Animated.add(translateX, gestureTranslateX);
+
+  const toggleTheme = () => {
+    setManualTheme(isDark ? 'light' : 'dark');
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Summary Card */}
-        <View style={styles.expense}>
-          <Text style={styles.title}>Total Expense</Text>
-          <Text style={styles.amount}>₹{totalExpense.toFixed(2)}</Text>
-          
-          {Object.keys(categoryBreakdown).length > 0 && (
-            <View style={styles.categorySection}>
-              <Text style={styles.categoryTitle}>By Category:</Text>
-              {Object.entries(categoryBreakdown).map(([cat, amt]) => (
-                <View key={cat} style={styles.categoryRow}>
-                  <Text style={styles.categoryName}>{cat}</Text>
-                  <Text style={styles.categoryAmount}>₹{amt.toFixed(2)}</Text>
+    <View style={[styles.container, isDark && styles.containerDark]}>
+      {/* Side Drawer */}
+      <Animated.View style={[styles.drawer, isDark && styles.drawerDark, { transform: [{ translateX: animatedTranslateX }] }]}>
+        <View style={styles.drawerContent}>
+          <TouchableOpacity style={styles.drawerItem}>
+            <Ionicons name="grid-outline" size={24} color={isDark ? "#fff" : "#333"} />
+            <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Dashboard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.drawerItem}>
+            <Ionicons name="bar-chart-outline" size={24} color={isDark ? "#fff" : "#333"} />
+            <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Reports</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.drawerItem}>
+            <Ionicons name="settings-outline" size={24} color={isDark ? "#fff" : "#333"} />
+            <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Settings</Text>
+          </TouchableOpacity>
+          <View style={styles.drawerItem}>
+            <Ionicons
+              name={isDark ? "moon-outline" : "sunny-outline"}
+              size={24}
+              color={isDark ? "#fff" : "#333"}
+            />
+            <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>
+              {/* Theme */}
+            </Text>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: "#ccc", true: "#555" }}
+              thumbColor={isDark ? "#fff" : "#333"}
+            />
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Overlay */}
+      {drawerOpen && (
+        <TouchableOpacity 
+          style={styles.overlay} 
+          onPress={closeDrawer}
+          activeOpacity={1}
+        />
+      )}
+
+      {/* Main Content */}
+      <PanGestureHandler
+        onGestureEvent={onGestureEvent}
+        onHandlerStateChange={onHandlerStateChange}
+        activeOffsetX={10}
+        failOffsetY={[-30, 30]}
+        shouldCancelWhenOutside={false}
+        enabled={!isOpen}
+      >
+        <Animated.View style={styles.mainContent}>
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            {/* Summary Card */}
+            <LinearGradient
+              colors={isDark ? ['#1e3a8a', '#3b82f6', '#60a5fa'] : ['#1e7cf8', '#3b82f6', '#60a5fa']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.expense}
+            >
+              <Text style={styles.title}>Total Expense</Text>
+              <Text style={styles.amount}>₹{totalExpense.toFixed(2)}</Text>
+              
+              {Object.keys(categoryBreakdown).length > 0 && (
+                <View style={styles.categorySection}>
+                  <Text style={styles.categoryTitle}>By Category:</Text>
+                  {Object.entries(categoryBreakdown).map(([cat, amt]) => (
+                    <View key={cat} style={styles.categoryRow}>
+                      <Text style={styles.categoryName}>{cat}</Text>
+                      <Text style={styles.categoryAmount}>₹{amt.toFixed(2)}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              )}
+            </LinearGradient>
+
+            {/* Date Selector */}
+            <View style={[styles.dateSelector, isDark && styles.dateSelectorDark]}>
+              <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateButton}>
+                <Text style={styles.dateButtonText}>←</Text>
+              </TouchableOpacity>
+              <View style={styles.dateTextContainer}>
+                <Text style={[styles.dateText, isDark && styles.dateTextDark]}>
+                  {formatDate(selectedDate)}
+                </Text>
+                {!isToday() && (
+                  <TouchableOpacity onPress={goToToday}>
+                    <Text style={styles.todayButton}>Go to Today</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateButton}>
+                <Text style={styles.dateButtonText}>→</Text>
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
 
-        {/* Month Selector */}
-        <View style={styles.monthSelector}>
-          <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthButton}>
-            <Text style={styles.monthButtonText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.monthText}>
-            {months[selectedMonth]} {selectedYear}
-          </Text>
-          <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthButton}>
-            <Text style={styles.monthButtonText}>→</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Expenses by Day */}
-        <View style={styles.expensesList}>
-          {Object.keys(expensesByDay).length === 0 ? (
-            <Text style={styles.noExpenses}>No expenses for this month</Text>
-          ) : (
-            Object.entries(expensesByDay).map(([day, dayExpenses]) => (
-              <View key={day} style={styles.dayGroup}>
-                <Text style={styles.dayHeader}>{day}</Text>
-                {dayExpenses.map(exp => (
-                  <View key={exp.id} style={styles.expenseItem}>
+            {/* Expenses List */}
+            <View style={styles.expensesList}>
+              {filteredExpenses.length === 0 ? (
+                <Text style={[styles.noExpenses, isDark && styles.noExpensesDark]}>
+                  No expenses for this day
+                </Text>
+              ) : (
+                filteredExpenses.map(exp => (
+                  <View key={exp.id} style={[styles.expenseItem, isDark && styles.expenseItemDark]}>
                     <View style={styles.expenseInfo}>
-                      <Text style={styles.expenseCategory}>{exp.category}</Text>
+                      <Text style={[styles.expenseCategory, isDark && styles.expenseCategoryDark]}>
+                        {exp.category}
+                      </Text>
                       {exp.description && (
-                        <Text style={styles.expenseDescription}>{exp.description}</Text>
+                        <Text style={[styles.expenseDescription, isDark && styles.expenseDescriptionDark]}>
+                          {exp.description}
+                        </Text>
                       )}
-                      <Text style={styles.expenseTime}>
+                      <Text style={[styles.expenseTime, isDark && styles.expenseTimeDark]}>
                         {new Date(exp.date).toLocaleTimeString('en-US', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
@@ -219,32 +334,36 @@ export default function Index() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                ))}
-              </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
+                ))
+              )}
+            </View>
+          </ScrollView>
 
-      {/* Add Expense Button */}
-      <TouchableOpacity
-        onPress={() => setIsOpen(true)}
-        style={styles.addButton}
-      >
-        <Text style={styles.addButtonText}>+ Add Expense</Text>
-      </TouchableOpacity>
+          {/* Add Expense Button */}
+          <TouchableOpacity
+            onPress={() => setIsOpen(true)}
+            style={[styles.addButton, !isToday() && styles.disabledButton]}
+            disabled={!isToday()}
+          >
+            <Text style={[styles.addButtonText, !isToday() && styles.disabledButtonText]}>
+              + Add Expense
+            </Text>
+          </TouchableOpacity>
 
-      <AddExpenseModal
-        visible={isOpen}
-        onClose={() => setIsOpen(false)}
-        onSave={addExpense}
-        amount={amount}
-        setAmount={setAmount}
-        category={category}
-        setCategory={setCategory}
-        description={description}
-        setDescription={setDescription}
-      />
+          <AddExpenseModal
+            visible={isOpen}
+            onClose={() => setIsOpen(false)}
+            onSave={addExpense}
+            amount={amount}
+            setAmount={setAmount}
+            category={category}
+            setCategory={setCategory}
+            description={description}
+            setDescription={setDescription}
+            isDark={isDark}
+          />
+        </Animated.View>
+      </PanGestureHandler>
     </View>
   );
 }
@@ -253,6 +372,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  containerDark: {
+    backgroundColor: "#000",
   },
   scrollView: {
     flex: 1,
@@ -264,7 +386,6 @@ const styles = StyleSheet.create({
   expense: {
     width: "90%",
     padding: 20,
-    backgroundColor: "#1e7cf8",
     borderRadius: 15,
     marginBottom: 15,
     alignItems: "center",
@@ -315,7 +436,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
-  monthSelector: {
+  dateSelector: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -330,18 +451,34 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  monthButton: {
+  dateSelectorDark: {
+    backgroundColor: "#1c1c1e",
+  },
+  dateButton: {
     padding: 10,
   },
-  monthButtonText: {
+  dateButtonText: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#1e7cf8",
   },
-  monthText: {
-    fontSize: 18,
+  dateTextContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
+  dateText: {
+    fontSize: 16,
     fontWeight: "600",
     color: "#333",
+    textAlign: "center",
+  },
+  dateTextDark: {
+    color: "#fff",
+  },
+  todayButton: {
+    fontSize: 12,
+    color: "#1e7cf8",
+    marginTop: 4,
   },
   expensesList: {
     width: "90%",
@@ -352,14 +489,8 @@ const styles = StyleSheet.create({
     color: "#999",
     marginTop: 30,
   },
-  dayGroup: {
-    marginBottom: 20,
-  },
-  dayHeader: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
+  noExpensesDark: {
+    color: "#666",
   },
   expenseItem: {
     flexDirection: "row",
@@ -374,6 +505,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  expenseItemDark: {
+    backgroundColor: "#1c1c1e",
+  },
   expenseInfo: {
     flex: 1,
   },
@@ -382,15 +516,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
+  expenseCategoryDark: {
+    color: "#fff",
+  },
   expenseDescription: {
     fontSize: 14,
     color: "#666",
     marginTop: 2,
   },
+  expenseDescriptionDark: {
+    color: "#999",
+  },
   expenseTime: {
     fontSize: 12,
     color: "#999",
     marginTop: 4,
+  },
+  expenseTimeDark: {
+    color: "#666",
   },
   expenseRight: {
     alignItems: "flex-end",
@@ -429,5 +572,58 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
   },
-
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  disabledButtonText: {
+    color: "#999",
+  },
+  drawer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: DRAWER_WIDTH,
+    backgroundColor: "#fff",
+    zIndex: 1000,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  drawerDark: {
+    backgroundColor: "#1c1c1e",
+  },
+  drawerContent: {
+    flex: 1,
+    paddingTop: 20,
+    marginTop: 40,
+  },
+  drawerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  drawerItemText: {
+    fontSize: 18,
+    color: "#333",
+    marginLeft: 15,
+  },
+  drawerItemTextDark: {
+    color: "#fff",
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 999,
+  },
+  mainContent: {
+    flex: 1,
+  },
 });
