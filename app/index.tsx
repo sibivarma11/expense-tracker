@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, Animated, Dimensions } from "react-native";
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import * as SQLite from 'expo-sqlite';
+import AddButton from '../components/AddButton';
 import AddExpenseModal from '../components/AddExpenseModal';
 import SideDrawer from '../components/SideDrawer';
 import SummaryCard from '../components/SummaryCard';
@@ -29,6 +29,7 @@ export default function Index() {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [drawerOpen, setDrawerOpen] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -82,6 +83,7 @@ export default function Index() {
     setAmount("");
     setCategory("");
     setDescription("");
+    setPaymentMethod("");
     setIsOpen(false);
   };
 
@@ -231,6 +233,8 @@ export default function Index() {
             setCategory={setCategory}
             description={description}
             setDescription={setDescription}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
             isDark={isDark}
           />
         </Animated.View>
