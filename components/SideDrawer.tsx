@@ -8,9 +8,10 @@ interface SideDrawerProps {
   animatedTranslateX: Animated.AnimatedAddition<number>;
   isDark: boolean;
   onToggleTheme: () => void;
+  onExport: () => void;
 }
 
-export default function SideDrawer({ animatedTranslateX, isDark, onToggleTheme }: SideDrawerProps) {
+export default function SideDrawer({ animatedTranslateX, isDark, onToggleTheme, onExport }: SideDrawerProps) {
   return (
     <Animated.View style={[styles.drawer, isDark && styles.drawerDark, { transform: [{ translateX: animatedTranslateX }] }]}>
       <View style={styles.drawerContent}>
@@ -21,6 +22,10 @@ export default function SideDrawer({ animatedTranslateX, isDark, onToggleTheme }
         <TouchableOpacity style={styles.drawerItem}>
           <Ionicons name="bar-chart-outline" size={24} color={isDark ? "#fff" : "#333"} />
           <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Reports</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.drawerItem} onPress={onExport}>
+          <Ionicons name="download-outline" size={24} color={isDark ? "#fff" : "#333"} />
+          <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Export Data</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.drawerItem}>
           <Ionicons name="settings-outline" size={24} color={isDark ? "#fff" : "#333"} />

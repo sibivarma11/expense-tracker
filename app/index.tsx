@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, TouchableOpacity, ScrollView, useColorScheme, Animated, Dimensions } from "react-native";
+import SummaryView from "@/components/SummaryView";
+import * as SQLite from 'expo-sqlite';
+import { useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import AddButton from '../components/AddButton';
 import AddExpenseModal from '../components/AddExpenseModal';
-import SideDrawer from '../components/SideDrawer';
-import SummaryCard from '../components/SummaryCard';
 import DateSelector from '../components/DateSelector';
 import ExpenseList from '../components/ExpenseList';
-import AddButton from '../components/AddButton';
+import ExportScreen from '../components/ExportScreen';
+import SideDrawer from '../components/SideDrawer';
+import SummaryCard from '../components/SummaryCard';
 
 interface Expense {
   id: string;
@@ -32,6 +34,7 @@ export default function Index() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const gestureTranslateX = useRef(new Animated.Value(0)).current;
 
@@ -170,12 +173,26 @@ export default function Index() {
 
   const animatedTranslateX = Animated.add(translateX, gestureTranslateX);
 
+  if (showExport) {
+    return (
+      <ExportScreen
+        expenses={expenses}
+        isDark={isDark}
+        onClose={() => setShowExport(false)}
+      />
+    );
+  }
+
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       <SideDrawer
         animatedTranslateX={animatedTranslateX}
         isDark={isDark}
         onToggleTheme={() => setManualTheme(isDark ? 'light' : 'dark')}
+        onExport={() => {
+          setShowExport(true);
+          closeDrawer();
+        }}
       />
 
       {drawerOpen && (
@@ -199,6 +216,11 @@ export default function Index() {
             <SummaryCard
               totalExpense={getTotalExpense()}
               categoryBreakdown={getCategoryBreakdown()}
+              isDark={isDark}
+            />
+
+            <SummaryView
+              expenses={expenses}
               isDark={isDark}
             />
 
