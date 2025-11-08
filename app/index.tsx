@@ -63,15 +63,23 @@ export default function Index() {
   };
 
   const addExpense = async () => {
-    if (!amount || !category) {
+    const trimmedAmount = amount.trim();
+    const trimmedCategory = category.trim();
+    
+    if (!trimmedAmount || !trimmedCategory) {
       alert("Please fill in amount and category");
+      return;
+    }
+    
+    if (isNaN(parseFloat(trimmedAmount))) {
+      alert("Please enter a valid amount");
       return;
     }
 
     const newExpense = {
       id: Date.now().toString(),
-      amount: parseFloat(amount),
-      category: category.trim(),
+      amount: parseFloat(trimmedAmount),
+      category: trimmedCategory,
       description: description.trim(),
       date: selectedDate.toISOString(),
     };
