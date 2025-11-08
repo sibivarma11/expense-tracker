@@ -7,7 +7,7 @@ import AddButton from '../components/AddButton';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DateSelector from '../components/DateSelector';
 import ExpenseList from '../components/ExpenseList';
-import ExportScreen from '../components/ExportScreen';
+import ExportScreen from '../screens/ExportScreen';
 import SideDrawer from '../components/SideDrawer';
 import SummaryCard from '../components/SummaryCard';
 

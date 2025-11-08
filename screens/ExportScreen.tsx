@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 
@@ -20,12 +21,33 @@ interface ExportScreenProps {
 
 export default function ExportScreen({ expenses, isDark, onClose }: ExportScreenProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
+  const [popupType, setPopupType] = useState<'success' | 'error' | 'info'>('info');
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const showPopup = (type: 'success' | 'error' | 'info', message: string) => {
+    setPopupType(type);
+    setPopupMessage(message);
+    setPopupVisible(true);
+    Animated.parallel([
+      Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const hidePopup = () => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, { toValue: 0.8, duration: 150, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => setPopupVisible(false));
+  };
 
   const getFilteredExpenses = () => {
     const now = new Date();
     return expenses.filter(exp => {
       const expDate = new Date(exp.date);
-      
       switch (selectedPeriod) {
         case 'week':
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -44,57 +66,40 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
     try {
       const filtered = getFilteredExpenses();
       if (filtered.length === 0) {
-        Alert.alert('No Data', 'No expenses found for the selected period');
+        showPopup('info', 'No expenses found for the selected period.');
         return;
       }
 
-      console.log('Starting PDF export...');
       const total = filtered.reduce((sum, exp) => sum + exp.amount, 0);
       let html = `
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              h1 { color: #333; text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; font-weight: bold; }
-              .total { font-weight: bold; background-color: #f9f9f9; }
-            </style>
-          </head>
-          <body>
-            <h1>Expense Report - ${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}</h1>
-            <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            <table>
-              <tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr>
+        <html><head><style>
+          body { font-family: Arial; margin: 20px; }
+          h1 { text-align: center; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; }
+          th { background: #f2f2f2; }
+        </style></head><body>
+        <h1>Expense Report - ${selectedPeriod}</h1>
+        <table>
+          <tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr>
       `;
-      
       filtered.forEach(exp => {
-        html += `<tr><td>${new Date(exp.date).toLocaleDateString()}</td><td>${exp.category}</td><td>₹${exp.amount.toFixed(2)}</td><td>${exp.description || '-'}</td></tr>`;
+        html += `<tr>
+          <td>${new Date(exp.date).toLocaleDateString()}</td>
+          <td>${exp.category}</td>
+          <td>₹${exp.amount.toFixed(2)}</td>
+          <td>${exp.description || '-'}</td>
+        </tr>`;
       });
-      
-      html += `
-              <tr class="total"><td colspan="2"><strong>Total</strong></td><td><strong>₹${total.toFixed(2)}</strong></td><td></td></tr>
-            </table>
-          </body>
-        </html>
-      `;
+      html += `<tr><td colspan="2"><strong>Total</strong></td><td colspan="2"><strong>₹${total.toFixed(2)}</strong></td></tr></table></body></html>`;
 
-      console.log('Generating PDF...');
       const { uri } = await Print.printToFileAsync({ html });
-      console.log('PDF generated at:', uri);
-      
-      console.log('Sharing PDF...');
       await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
-      
-      Alert.alert('Success', 'PDF exported successfully!');
-    } catch (error) {
-      console.error('PDF export error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to export PDF: ${errorMessage}`);
+      showPopup('success', 'PDF exported successfully!');
+    } catch (error: any) {
+      showPopup('error', `Failed to export PDF: ${error.message}`);
     }
   };
-
 
   const filtered = getFilteredExpenses();
   const total = filtered.reduce((sum, exp) => sum + exp.amount, 0);
@@ -118,15 +123,16 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
                 styles.periodButton,
                 selectedPeriod === period && styles.periodButtonActive,
                 isDark && styles.periodButtonDark,
-                selectedPeriod === period && isDark && styles.periodButtonActiveDark
               ]}
               onPress={() => setSelectedPeriod(period)}
             >
-              <Text style={[
-                styles.periodButtonText,
-                selectedPeriod === period && styles.periodButtonTextActive,
-                isDark && styles.periodButtonTextDark
-              ]}>
+              <Text
+                style={[
+                  styles.periodButtonText,
+                  selectedPeriod === period && styles.periodButtonTextActive,
+                  isDark && styles.periodButtonTextDark,
+                ]}
+              >
                 {period.charAt(0).toUpperCase() + period.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -157,6 +163,33 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
           <Ionicons name="chevron-forward" size={20} color={isDark ? "#666" : "#999"} />
         </TouchableOpacity>
       </View>
+
+      <Modal transparent visible={popupVisible} animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <Animated.View style={[
+            styles.popupContainer,
+            { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
+            popupType === 'success' && styles.popupSuccess,
+            popupType === 'error' && styles.popupError,
+            popupType === 'info' && styles.popupInfo,
+          ]}>
+            <Ionicons
+              name={
+                popupType === 'success' ? 'checkmark-circle' :
+                popupType === 'error' ? 'alert-circle' :
+                'information-circle'
+              }
+              size={40}
+              color="#fff"
+              style={{ marginBottom: 10 }}
+            />
+            <Text style={styles.popupText}>{popupMessage}</Text>
+            <TouchableOpacity onPress={hidePopup} style={styles.popupButton}>
+              <Text style={styles.popupButtonText}>OK</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -217,9 +250,6 @@ const styles = StyleSheet.create({
   periodButtonActive: {
     backgroundColor: '#1e7cf8',
     borderColor: '#1e7cf8',
-  },
-  periodButtonActiveDark: {
-    backgroundColor: '#1e7cf8',
   },
   periodButtonText: {
     color: '#666',
@@ -285,5 +315,36 @@ const styles = StyleSheet.create({
   },
   exportButtonDescDark: {
     color: '#999',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    width: '80%',
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
+  },
+  popupSuccess: { backgroundColor: '#28a745' },
+  popupError: { backgroundColor: '#dc3545' },
+  popupInfo: { backgroundColor: '#007bff' },
+  popupText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  popupButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  popupButtonText: {
+    color: '#333',
+    fontWeight: 'bold',
   },
 });

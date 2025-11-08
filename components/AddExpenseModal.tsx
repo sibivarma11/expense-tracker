@@ -1,5 +1,4 @@
-import React from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
 interface AddExpenseModalProps {
@@ -43,79 +42,86 @@ export default function AddExpenseModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.popup, isDark && styles.popupDark]}>
-          <Text style={[styles.popupTitle, isDark && styles.popupTitleDark]}>
-            Add New Expense
-          </Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"} // Moves modal up
+        style={styles.modalOverlay}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.popup, isDark && styles.popupDark]}>
+            <Text style={[styles.popupTitle, isDark && styles.popupTitleDark]}>
+              Add New Expense
+            </Text>
 
-          {/* Amount */}
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
-            placeholder="Amount"
-            placeholderTextColor={isDark ? "#666" : "#999"}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-          />
+            {/* Amount */}
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Amount"
+              placeholderTextColor={isDark ? "#666" : "#999"}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+            />
 
-          {/* Category */}
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
-            placeholder="Category (e.g., Food, Transport)"
-            placeholderTextColor={isDark ? "#666" : "#999"}
-            value={category}
-            onChangeText={setCategory}
-          />
+            {/* Category */}
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Category (e.g., Food, Transport)"
+              placeholderTextColor={isDark ? "#666" : "#999"}
+              value={category}
+              onChangeText={setCategory}
+            />
 
-          {/* Payment Method Dropdown */}
-          <View style={[styles.pickerWrapper, isDark && styles.pickerWrapperDark]}>
-            <Picker
-              selectedValue={paymentMethod}
-              onValueChange={(itemValue) => setPaymentMethod(itemValue)}
-              dropdownIconColor={isDark ? "#fff" : "#000"}
-              style={[styles.picker, isDark && styles.pickerDark]}
-            >
-              <Picker.Item label="Select Payment Method" value="" />
-              <Picker.Item label="Cash" value="Cash" />
-              <Picker.Item label="UPI" value="UPI" />
-              <Picker.Item label="Credit Card" value="Credit Card" />
-              <Picker.Item label="Debit Card" value="Debit Card" />
-              <Picker.Item label="Net Banking" value="Net Banking" />
-              <Picker.Item label="Wallet" value="Wallet" />
-            </Picker>
+            {/* Payment Method Dropdown */}
+            <View style={[styles.pickerWrapper, isDark && styles.pickerWrapperDark]}>
+              <Picker
+                selectedValue={paymentMethod}
+                onValueChange={(itemValue) => setPaymentMethod(itemValue)}
+                dropdownIconColor={isDark ? "#fff" : "#000"}
+                style={[styles.picker, isDark && styles.pickerDark]}
+              >
+                <Picker.Item label="Select Payment Method" value="" />
+                <Picker.Item label="Cash" value="Cash" />
+                <Picker.Item label="UPI" value="UPI" />
+                <Picker.Item label="Credit Card" value="Credit Card" />
+                <Picker.Item label="Debit Card" value="Debit Card" />
+                <Picker.Item label="Net Banking" value="Net Banking" />
+                <Picker.Item label="Wallet" value="Wallet" />
+              </Picker>
+            </View>
+
+            {/* Description */}
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Description (optional)"
+              placeholderTextColor={isDark ? "#666" : "#999"}
+              value={description}
+              onChangeText={setDescription}
+            />
+
+            {/* Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.modalButton, styles.cancelButton, isDark && styles.cancelButtonDark]}
+              >
+                <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={onSave}
+                style={[styles.modalButton, styles.saveButton]}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          {/* Description */}
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
-            placeholder="Description (optional)"
-            placeholderTextColor={isDark ? "#666" : "#999"}
-            value={description}
-            onChangeText={setDescription}
-          />
-
-          {/* Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.modalButton, styles.cancelButton, isDark && styles.cancelButtonDark]}
-            >
-              <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={onSave}
-              style={[styles.modalButton, styles.saveButton]}
-            >
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
