@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-
+import * as Print from 'expo-print';
 
 interface Expense {
   id: string;
@@ -41,16 +40,7 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
     });
   };
 
-  const generateCSV = () => {
-    const filtered = getFilteredExpenses();
-    const headers = 'Date,Category,Amount,Description\n';
-    const rows = filtered.map(exp => 
-      `${new Date(exp.date).toLocaleDateString()},${exp.category},${exp.amount},"${exp.description}"`
-    ).join('\n');
-    return headers + rows;
-  };
-
-  const exportToCSV = async () => {
+  const exportToPDF = async () => {
     try {
       const filtered = getFilteredExpenses();
       if (filtered.length === 0) {
@@ -58,38 +48,53 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
         return;
       }
 
-      const csvContent = generateCSV();
-      const fileName = `expenses_${selectedPeriod}_${new Date().toISOString().split('T')[0]}.csv`;
-      const fileUri = FileSystem.documentDirectory + fileName;
+      console.log('Starting PDF export...');
+      const total = filtered.reduce((sum, exp) => sum + exp.amount, 0);
+      let html = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; text-align: center; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              .total { font-weight: bold; background-color: #f9f9f9; }
+            </style>
+          </head>
+          <body>
+            <h1>Expense Report - ${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)}</h1>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <table>
+              <tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr>
+      `;
       
-      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+      filtered.forEach(exp => {
+        html += `<tr><td>${new Date(exp.date).toLocaleDateString()}</td><td>${exp.category}</td><td>₹${exp.amount.toFixed(2)}</td><td>${exp.description || '-'}</td></tr>`;
       });
       
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Error', 'Sharing is not available on this device');
-        return;
-      }
+      html += `
+              <tr class="total"><td colspan="2"><strong>Total</strong></td><td><strong>₹${total.toFixed(2)}</strong></td><td></td></tr>
+            </table>
+          </body>
+        </html>
+      `;
+
+      console.log('Generating PDF...');
+      const { uri } = await Print.printToFileAsync({ html });
+      console.log('PDF generated at:', uri);
       
-      await Sharing.shareAsync(fileUri, {
-        mimeType: 'text/csv',
-        dialogTitle: 'Export Expenses',
-      });
+      console.log('Sharing PDF...');
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
       
-      Alert.alert('Success', 'Expenses exported successfully!');
+      Alert.alert('Success', 'PDF exported successfully!');
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('PDF export error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to export expenses: ${errorMessage}`);
+      Alert.alert('Error', `Failed to export PDF: ${errorMessage}`);
     }
   };
 
-
-
-  const exportToPDF = async () => {
-    Alert.alert('PDF Export', 'PDF export feature coming soon!');
-  };
 
   const filtered = getFilteredExpenses();
   const total = filtered.reduce((sum, exp) => sum + exp.amount, 0);
@@ -138,20 +143,6 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
       <View style={styles.exportOptions}>
         <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Export Format</Text>
         
-        <TouchableOpacity 
-          style={[styles.exportButton, isDark && styles.exportButtonDark]}
-          onPress={exportToCSV}
-        >
-          <Ionicons name="document-text-outline" size={24} color="#1e7cf8" />
-          <View style={styles.exportButtonContent}>
-            <Text style={[styles.exportButtonTitle, isDark && styles.exportButtonTitleDark]}>Excel/CSV</Text>
-            <Text style={[styles.exportButtonDesc, isDark && styles.exportButtonDescDark]}>
-              Export as spreadsheet file
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={isDark ? "#666" : "#999"} />
-        </TouchableOpacity>
-
         <TouchableOpacity 
           style={[styles.exportButton, isDark && styles.exportButtonDark]}
           onPress={exportToPDF}
@@ -267,10 +258,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   exportButtonDark: {
     backgroundColor: '#1c1c1e',
+    borderColor: '#444',
   },
   exportButtonContent: {
     flex: 1,
@@ -280,6 +274,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 2,
   },
   exportButtonTitleDark: {
     color: '#fff',
@@ -287,7 +282,6 @@ const styles = StyleSheet.create({
   exportButtonDesc: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2,
   },
   exportButtonDescDark: {
     color: '#999',
