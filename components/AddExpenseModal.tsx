@@ -1,5 +1,17 @@
-import { Modal, View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, StyleSheet, Platform } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import React, { useState } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  StyleSheet,
+  Platform,
+  FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface AddExpenseModalProps {
   visible: boolean;
@@ -35,6 +47,17 @@ export default function AddExpenseModal({
   setPaymentMethod,
   isDark,
 }: AddExpenseModalProps) {
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  const paymentOptions = [
+    "Cash",
+    "UPI",
+    "Credit Card",
+    "Debit Card",
+    "Net Banking",
+    "Wallet",
+  ];
+
   return (
     <Modal
       visible={visible}
@@ -43,7 +66,7 @@ export default function AddExpenseModal({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"} // Moves modal up
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.modalOverlay}
       >
         <ScrollView
@@ -74,23 +97,56 @@ export default function AddExpenseModal({
               onChangeText={setCategory}
             />
 
-            {/* Payment Method Dropdown */}
-            <View style={[styles.pickerWrapper, isDark && styles.pickerWrapperDark]}>
-              <Picker
-                selectedValue={paymentMethod}
-                onValueChange={(itemValue) => setPaymentMethod(itemValue)}
-                dropdownIconColor={isDark ? "#fff" : "#000"}
-                style={[styles.picker, isDark && styles.pickerDark]}
+            {/* Custom Dropdown */}
+            <View style={[styles.dropdownWrapper, isDark && styles.dropdownWrapperDark]}>
+              <TouchableOpacity
+                style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]}
+                onPress={() => setDropdownVisible(true)}
               >
-                <Picker.Item label="Select Payment Method" value="" />
-                <Picker.Item label="Cash" value="Cash" />
-                <Picker.Item label="UPI" value="UPI" />
-                <Picker.Item label="Credit Card" value="Credit Card" />
-                <Picker.Item label="Debit Card" value="Debit Card" />
-                <Picker.Item label="Net Banking" value="Net Banking" />
-                <Picker.Item label="Wallet" value="Wallet" />
-              </Picker>
+                <Text style={[styles.dropdownText, isDark && styles.dropdownTextDark]}>
+                  {paymentMethod || "Select Payment Method"}
+                </Text>
+                <Ionicons
+                  name={dropdownVisible ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={isDark ? "#fff" : "#000"}
+                />
+              </TouchableOpacity>
             </View>
+
+            {/* Dropdown Modal */}
+            <Modal
+              visible={dropdownVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setDropdownVisible(false)}
+            >
+              <TouchableOpacity
+                style={styles.dropdownOverlay}
+                activeOpacity={1}
+                onPressOut={() => setDropdownVisible(false)}
+              >
+                <View style={[styles.dropdownList, isDark && styles.dropdownListDark]}>
+                  <FlatList
+                    data={paymentOptions}
+                    keyExtractor={(item) => item}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setPaymentMethod(item);
+                          setDropdownVisible(false);
+                        }}
+                      >
+                        <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                </View>
+              </TouchableOpacity>
+            </Modal>
 
             {/* Description */}
             <TextInput
@@ -134,7 +190,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   popup: {
-    width: "85%",
+    width: "90%",
     padding: 25,
     backgroundColor: "#fff",
     borderRadius: 15,
@@ -153,7 +209,6 @@ const styles = StyleSheet.create({
   popupTitleDark: {
     color: "#fff",
   },
-
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
@@ -169,24 +224,62 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  pickerWrapper: {
+  // Dropdown
+  dropdownWrapper: {
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
     marginBottom: 15,
   },
-  pickerWrapperDark: {
+  dropdownWrapperDark: {
     borderColor: "#444",
     backgroundColor: "#2c2c2e",
   },
-  picker: {
-    height: 50,
+  dropdownButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+  },
+  dropdownButtonDark: {
+    backgroundColor: "#2c2c2e",
+  },
+  dropdownText: {
+    fontSize: 16,
     color: "#000",
   },
-  pickerDark: {
+  dropdownTextDark: {
+    color: "#fff",
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownList: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    maxHeight: 300,
+    elevation: 5,
+  },
+  dropdownListDark: {
+    backgroundColor: "#2c2c2e",
+  },
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  dropdownItemTextDark: {
     color: "#fff",
   },
 
+  // Buttons
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
