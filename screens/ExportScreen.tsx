@@ -121,9 +121,11 @@ export default function ExportScreen({ expenses, isDark, onClose }: ExportScreen
               key={period}
               style={[
                 styles.periodButton,
-                selectedPeriod === period && styles.periodButtonActive,
-                isDark && styles.periodButtonDark,
+                isDark ? styles.periodButtonDark : {},
+                selectedPeriod === period &&
+                  (isDark ? styles.periodButtonActiveDark : styles.periodButtonActive),
               ]}
+
               onPress={() => setSelectedPeriod(period)}
             >
               <Text
@@ -250,6 +252,10 @@ const styles = StyleSheet.create({
   periodButtonActive: {
     backgroundColor: '#1e7cf8',
     borderColor: '#1e7cf8',
+  },
+  periodButtonActiveDark: {
+    backgroundColor: '#3b82f6', // visible blue in dark mode
+    borderColor: '#3b82f6',
   },
   periodButtonText: {
     color: '#666',
