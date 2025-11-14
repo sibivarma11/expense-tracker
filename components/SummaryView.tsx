@@ -18,6 +18,9 @@ export default function SummaryView({ expenses, isDark }: SummaryViewProps) {
   const [viewMode, setViewMode] = useState<"month" | "year">("month");
 
   const getSummaries = () => {
+    if (!expenses || !Array.isArray(expenses)) {
+      return [];
+    }
     const summaries: { [key: string]: number } = {};
     expenses.forEach(exp => {
       const d = new Date(exp.date);

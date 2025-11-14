@@ -1,5 +1,5 @@
 import SummaryView from "@/components/SummaryView";
-import * as SQLite from 'expo-sqlite';
+import { expenseAPI } from '../services/api';
 import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
@@ -16,7 +16,12 @@ interface Expense {
   amount: number;
   category: string;
   description: string;
+  paymentMethod: string;
   date: string;
+}
+
+interface ApiResponse<T> {
+  data: T;
 }
 
 const { width } = Dimensions.get('window');
@@ -39,27 +44,19 @@ export default function Index() {
   const gestureTranslateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    initDatabase();
+    loadExpenses();
   }, []);
 
-  const initDatabase = async () => {
-    const db = await SQLite.openDatabaseAsync('expenses.db');
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS expenses (
-        id TEXT PRIMARY KEY,
-        amount REAL,
-        category TEXT,
-        description TEXT,
-        date TEXT
-      );
-    `);
-    loadExpenses();
-  };
+
 
   const loadExpenses = async () => {
-    const db = await SQLite.openDatabaseAsync('expenses.db');
-    const result = await db.getAllAsync('SELECT * FROM expenses ORDER BY date DESC');
-    setExpenses(result as Expense[]);
+    try {
+      const result = await expenseAPI.getExpenses() as unknown as ApiResponse<Expense[]>;
+      setExpenses(result.data && Array.isArray(result.data) ? result.data : []);
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+      setExpenses([]);
+    }
   };
 
   const addExpense = async () => {
@@ -81,16 +78,26 @@ export default function Index() {
       amount: parseFloat(trimmedAmount),
       category: trimmedCategory,
       description: description.trim(),
+      paymentMethod: paymentMethod.trim(),
       date: selectedDate.toISOString(),
+
     };
 
-    const db = await SQLite.openDatabaseAsync('expenses.db');
-    await db.runAsync(
-      'INSERT INTO expenses (id, amount, category, description, date) VALUES (?, ?, ?, ?, ?)',
-      [newExpense.id, newExpense.amount, newExpense.category, newExpense.description, newExpense.date]
-    );
-    
-    setExpenses([newExpense, ...expenses]);
+    try {
+      const savedExpense = await expenseAPI.addExpense({
+        amount: parseFloat(trimmedAmount),
+        category: trimmedCategory,
+        description: description.trim(),
+        paymentMethod: paymentMethod.trim(),
+        date: selectedDate.toISOString(),
+      }) as Expense;
+      
+      setExpenses([savedExpense, ...(Array.isArray(expenses) ? expenses : [])]);
+    } catch (error) {
+      console.error('Failed to add expense:', error);
+      alert('Failed to add expense');
+      return;
+    }
     setAmount("");
     setCategory("");
     setDescription("");
@@ -99,12 +106,19 @@ export default function Index() {
   };
 
   const deleteExpense = async (id: string) => {
-    const db = await SQLite.openDatabaseAsync('expenses.db');
-    await db.runAsync('DELETE FROM expenses WHERE id = ?', [id]);
-    setExpenses(expenses.filter(exp => exp.id !== id));
+    try {
+      await expenseAPI.deleteExpense(id);
+      setExpenses((Array.isArray(expenses) ? expenses : []).filter(exp => exp.id !== id));
+    } catch (error) {
+      console.error('Failed to delete expense:', error);
+      alert('Failed to delete expense');
+    }
   };
 
   const getFilteredExpenses = () => {
+    if (!expenses || !Array.isArray(expenses)) {
+      return [];
+    }
     return expenses.filter(exp => {
       const expDate = new Date(exp.date);
       return expDate.getDate() === selectedDate.getDate() &&
