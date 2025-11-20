@@ -6,6 +6,7 @@ interface Expense {
   category: string;
   description: string;
   date: string;
+  paymentMethod: string;
 }
 
 export const expenseAPI = {
