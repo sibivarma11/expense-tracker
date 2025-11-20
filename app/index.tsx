@@ -1,5 +1,4 @@
 import SummaryView from "@/components/SummaryView";
-import { expenseAPI } from '../services/api';
 import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, View } from "react-native";
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
@@ -7,9 +6,10 @@ import AddButton from '../components/AddButton';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DateSelector from '../components/DateSelector';
 import ExpenseList from '../components/ExpenseList';
-import ExportScreen from '../screens/ExportScreen';
 import SideDrawer from '../components/SideDrawer';
 import SummaryCard from '../components/SummaryCard';
+import ExportScreen from '../screens/ExportScreen';
+import { expenseAPI } from '../services/api';
 
 interface Expense {
   id: string;
@@ -103,6 +103,7 @@ export default function Index() {
     setDescription("");
     setPaymentMethod("");
     setIsOpen(false);
+    loadExpenses()
   };
 
   const deleteExpense = async (id: string) => {
