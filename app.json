@@ -6,12 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "expensetracker",
+    "jsEngine": "hermes",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
+      "icon": "./assets/images/icon.png",
       "supportsTablet": true
     },
     "android": {
+      "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -24,7 +26,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon-32x32.png"
     },
     "plugins": [
       "expo-router",
@@ -50,6 +52,11 @@
       "router": {},
       "eas": {
         "projectId": "00056c82-364a-47ca-a65b-1847c0367edf"
+      }
+    },
+    "metro": {
+      "resolver": {
+        "assetExts": ["bin", "txt", "jpg", "png", "json", "mp4", "ttf", "m4v", "mov", "mp4", "mpeg", "mpg", "webm"]
       }
     }
   }
