@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Animated, Dimensions } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import { Animated, Dimensions, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
@@ -15,22 +15,22 @@ export default function SideDrawer({ animatedTranslateX, isDark, onToggleTheme, 
   return (
     <Animated.View style={[styles.drawer, isDark && styles.drawerDark, { transform: [{ translateX: animatedTranslateX }] }]}>
       <View style={styles.drawerContent}>
-        <TouchableOpacity style={styles.drawerItem}>
+        {/* <TouchableOpacity style={styles.drawerItem}>
           <Ionicons name="grid-outline" size={24} color={isDark ? "#fff" : "#333"} />
           <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Dashboard</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.drawerItem}>
+        </TouchableOpacity> */}
+        {/* <TouchableOpacity style={styles.drawerItem}>
           <Ionicons name="bar-chart-outline" size={24} color={isDark ? "#fff" : "#333"} />
           <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Reports</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity style={styles.drawerItem} onPress={onExport}>
           <Ionicons name="download-outline" size={24} color={isDark ? "#fff" : "#333"} />
           <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Export Data</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.drawerItem}>
+        {/* <TouchableOpacity style={styles.drawerItem}>
           <Ionicons name="settings-outline" size={24} color={isDark ? "#fff" : "#333"} />
           <Text style={[styles.drawerItemText, isDark && styles.drawerItemTextDark]}>Settings</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <View style={styles.drawerItem}>
           <Ionicons
             name={isDark ? "moon-outline" : "sunny-outline"}

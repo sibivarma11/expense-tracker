@@ -189,7 +189,11 @@ export default function Index() {
       <ExportScreen
         expenses={expenses}
         isDark={isDark}
-        onClose={() => setShowExport(false)}
+        onClose={() => {
+          setShowExport(false);
+          setDrawerOpen(false);
+          translateX.setValue(-DRAWER_WIDTH);
+        }}
       />
     );
   }
@@ -201,8 +205,8 @@ export default function Index() {
         isDark={isDark}
         onToggleTheme={() => setManualTheme(isDark ? 'light' : 'dark')}
         onExport={() => {
-          setShowExport(true);
           closeDrawer();
+          setShowExport(true);
         }}
       />
 
