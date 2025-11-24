@@ -9,7 +9,7 @@ import ExpenseList from '../components/ExpenseList';
 import SideDrawer from '../components/SideDrawer';
 import SummaryCard from '../components/SummaryCard';
 import ExportScreen from '../screens/ExportScreen';
-import { expenseAPI } from '../services/api';
+import { dbService } from '../services/database';
 
 interface Expense {
   id: string;
@@ -51,8 +51,8 @@ export default function Index() {
 
   const loadExpenses = async () => {
     try {
-      const result = await expenseAPI.getExpenses() as unknown as ApiResponse<Expense[]>;
-      setExpenses(result.data && Array.isArray(result.data) ? result.data : []);
+      const result = await dbService.getExpenses();
+      setExpenses(result);
     } catch (error) {
       console.error('Failed to load expenses:', error);
       setExpenses([]);
@@ -73,42 +73,30 @@ export default function Index() {
       return;
     }
 
-    const newExpense = {
-      id: Date.now().toString(),
-      amount: parseFloat(trimmedAmount),
-      category: trimmedCategory,
-      description: description.trim(),
-      paymentMethod: paymentMethod.trim(),
-      date: selectedDate.toISOString(),
-
-    };
-
     try {
-      const savedExpense = await expenseAPI.addExpense({
+      const savedExpense = await dbService.addExpense({
         amount: parseFloat(trimmedAmount),
         category: trimmedCategory,
         description: description.trim(),
         paymentMethod: paymentMethod.trim(),
         date: selectedDate.toISOString(),
-      }) as Expense;
+      });
       
       setExpenses([savedExpense, ...(Array.isArray(expenses) ? expenses : [])]);
+      setAmount("");
+      setCategory("");
+      setDescription("");
+      setPaymentMethod("");
+      setIsOpen(false);
     } catch (error) {
       console.error('Failed to add expense:', error);
-      alert('Failed to add expense');
-      return;
+      alert('Failed to add expense.');
     }
-    setAmount("");
-    setCategory("");
-    setDescription("");
-    setPaymentMethod("");
-    setIsOpen(false);
-    loadExpenses()
   };
 
   const deleteExpense = async (id: string) => {
     try {
-      await expenseAPI.deleteExpense(id);
+      await dbService.deleteExpense(id);
       setExpenses((Array.isArray(expenses) ? expenses : []).filter(exp => exp.id !== id));
     } catch (error) {
       console.error('Failed to delete expense:', error);

@@ -13,6 +13,7 @@ export const expenseAPI = {
   // Get all expenses
   getExpenses: async (): Promise<Expense[]> => {
     const response = await fetch(`${API_BASE_URL}/expenses`);
+    if (!response.ok) throw new Error('Failed to fetch expenses');
     return response.json();
   },
 
@@ -23,14 +24,16 @@ export const expenseAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(expense),
     });
+    if (!response.ok) throw new Error('Failed to add expense');
     return response.json();
   },
 
   // Delete expense
   deleteExpense: async (id: string): Promise<void> => {
-    await fetch(`${API_BASE_URL}/expense/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/expense/${id}`, {
       method: 'DELETE',
     });
+    if (!response.ok) throw new Error('Failed to delete expense');
   },
 
   // Update expense
@@ -40,6 +43,7 @@ export const expenseAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(expense),
     });
+    if (!response.ok) throw new Error('Failed to update expense');
     return response.json();
   },
 };
